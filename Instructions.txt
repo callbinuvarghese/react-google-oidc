@@ -1,0 +1,135 @@
+ #https://www.youtube.com/watch?v=roxC8SMs7HU
+
+➜ npx create-react-app client
+cd client
+code .
+ 
+Added the following line ./public/index.html
+ <script src="https://accounts.google.com/gsi/client" async defer></script>
+
+GCP Console-> API & Services->Added Client Id for Web Application
+Remember that the Authorized JavaScript Origins URL need to have http://localhost in addition to http://localhost:3000 for GSI to work
+Authorized redirect URIs: http://localhost:3000/
+Get the Client ID
+Client Secret not used for React ( Unlike server based apps)
+
+./src/App.js
+ <div className="App">
+ </div>
+ 
+npm install
+npm run start
+
+./src/App.js
+The script GSI client in ./public/index.html will put in the button under the below tag.
+Because of the script inclusion above, google.accounts.id is avaialble to define intialize and renderButton
+See that google.accounts.id.initialize use a Callbacl function handleCallbackResponse after it gets the response of Auth from IAM
+import { useEffect } from 'react';
+useEffect(() => {
+    /* global google */
+    google.accounts.id.initialize({
+      client_id: '403157937476-48nvdvsohjhr9fv68n8q6dbho0n5c5qm.apps.googleusercontent.com',
+      callback: handleCallbackResponse
+    });
+    
+    google.accounts.id.renderButton(
+      document.getElementById('signInDiv'),
+      { theme: "outline", size: "large" }
+    );
+}    
+
+The callback function can just log the JWT token in x.y.z format.
+ function handleCallbackResponse(response) {
+    console.log("Encoded JWT ID token: "+ response.credential);
+ }
+
+  return (
+    <div className="App">
+     <div id="signInDiv"></div>
+    </div>
+  ); 
+
+You need jwt-decode to decode the JWT token.
+
+ npm install jwt-decode
+
+./src/App.js
+
+The below will decode the JWT token and log the attributes of the JWT token
+
+import jwt_decode from 'jwt-decode'
+
+function handleCallbackResponse(response) {
+    console.log("Encoded JWT ID token: "+ response.credential);
+    var userObject = jwt_decode(response.credential);
+    console.log(userObject);
+  }
+
+{
+    "iss": "https://accounts.google.com",
+    "nbf": 1675917663,
+    "aud": "403157937476-48nvdvsohjhr9fv68n8q6dbho0n5c5qm.apps.googleusercontent.com",
+    "sub": "112918543198288097150",
+    "email": "call.binu.varghese@gmail.com",
+    "email_verified": true,
+    "azp": "403157937476-48nvdvsohjhr9fv68n8q6dbho0n5c5qm.apps.googleusercontent.com",
+    "name": "Binu Varghese",
+    "picture": "https://lh3.googleusercontent.com/a/AEdFTp7dLJ-kd9ELcOMtV78_DisxVfPBkfT1rLEstTnKDg=s96-c",
+    "given_name": "Binu",
+    "family_name": "Varghese",
+    "iat": 1675917963,
+    "exp": 1675921563,
+    "jti": "776f7f89ed9cb7ec3487d59a98db75eda915cfbb"
+}
+
+./src/App.js
+next keep the user information in the UserState
+Redux will be better for this ( do later)
+import { useEffect, useState } from 'react';
+
+const [ user, setUser ] = useState({});
+
+function handleCallbackResponse(response) {
+    console.log("Encoded JWT ID token: "+ response.credential);
+    var userObject = jwt_decode(response.credential);
+    console.log(userObject);
+    setUser(userObject);
+}
+
+./src/App.js
+If user Object is present with the keys, display signOut button
+If user Object is present with keys, display User profile
+ <div className="App">
+     <div id="signInDiv"></div>
+     { Object.keys(user).length !== 0 &&
+        <button onClick={ (e) => handleSignOut(e)}>Sign Out</button>
+     }
+     { user && Object.keys(user).length !== 0 &&
+       <div id="userProfile">
+        <img src="{user.picture}" alt="User Profile" ></img>
+        <h3>{user.name}</h3>
+        <br/>
+        <h3>{user.email}</h3>
+       </div> 
+     }
+    </div>
+
+./src/App.js
+Added  google.accounts.id.prompt();
+This will display a menu of previous logged in users
+Comes from the gsi library script in index.html
+
+ useEffect(() => {
+    /* global google */
+    google.accounts.id.initialize({
+      client_id: '403157937476-48nvdvsohjhr9fv68n8q6dbho0n5c5qm.apps.googleusercontent.com',
+      callback: handleCallbackResponse
+    });
+    
+    google.accounts.id.renderButton(
+      document.getElementById('signInDiv'),
+      { theme: "outline", size: "large" }
+    );
+
+    google.accounts.id.prompt();
+  }, []);
